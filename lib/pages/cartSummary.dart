@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:networklist_test/config.dart';
 import 'package:networklist_test/models/carts.dart';
 import 'package:networklist_test/pages/successPayment.dart';
 import 'package:networklist_test/widget/widget_support.dart';
@@ -34,7 +35,7 @@ class _CartSummaryState extends State<CartSummary> {
   void removeCartItemById(int cartId) async {
     String? token = await storage.read(key: 'accessToken');
     print("Cart Id : $cartId");
-    final url = Uri.parse('http://10.0.2.2:8008/carts/$cartId');
+    final url = Uri.parse('${Config.baseUrl}/carts/$cartId');
     final headers = {
       'Authorization': 'Bearer $token',
       "Content-Type": 'application/json'
@@ -58,7 +59,7 @@ class _CartSummaryState extends State<CartSummary> {
     print("Before buying: ${widget.carts}");
     final totalPrice = widget.carts
         .fold(0, (prev, item) => prev + (item.amount * item.productData.price));
-    final url = Uri.parse('http://10.0.2.2:8008/orders');
+    final url = Uri.parse('${Config.baseUrl}/orders');
     final headers = {
       'Authorization': 'Bearer $token',
       "Content-Type": 'application/json'
@@ -105,8 +106,11 @@ class _CartSummaryState extends State<CartSummary> {
       bottomNavigationBar: BottomAppBar(
         color: Colors.white,
         child: FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Color(0xFF7A5C61)),
-            onPressed: createOrder,
+            style: FilledButton.styleFrom(
+                backgroundColor: widget.carts.isEmpty
+                    ? Color(0xFFC2B4B6)
+                    : Color(0xFF7A5C61)),
+            onPressed: widget.carts.isEmpty ? null : createOrder,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               spacing: 10,

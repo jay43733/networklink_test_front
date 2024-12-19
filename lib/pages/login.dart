@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:flutter/material.dart';
+import 'package:networklist_test/config.dart';
 import 'package:networklist_test/models/carts.dart';
 import 'package:networklist_test/pages/home.dart';
 import 'package:networklist_test/pages/register.dart';
@@ -25,11 +26,10 @@ class _LoginPageState extends State<LoginPage> {
   bool _isPasswordHidden = false;
 
   @override
-
   Widget build(BuildContext context) {
     void showErrorWithSnackBar(BuildContext context, String message) {
       final snackBar =
-          SnackBar(content: Text(message), backgroundColor: Colors.red);
+          SnackBar(content: Text(message), backgroundColor: Color(0xFFEC0357));
       ScaffoldMessenger.of(context).showSnackBar(snackBar);
     }
 
@@ -38,7 +38,7 @@ class _LoginPageState extends State<LoginPage> {
         _formKey.currentState?.save();
 
         // API URL for login
-        final url = Uri.parse('http://10.0.2.2:8008/login');
+        final url = Uri.parse('${Config.baseUrl}/login');
         final headers = {"Content-Type": 'application/json'};
         final body = jsonEncode({'email': _email, "password": _password});
 
@@ -53,7 +53,6 @@ class _LoginPageState extends State<LoginPage> {
 
             await storage.write(key: 'accessToken', value: token);
 
-            print("Login : ${token}");
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(builder: (ctx) => Home()),

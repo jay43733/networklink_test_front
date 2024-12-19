@@ -1,6 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:networklist_test/config.dart';
+import 'package:networklist_test/pages/history.dart';
+import 'package:networklist_test/pages/login.dart';
 import 'package:networklist_test/widget/widget_support.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -27,7 +30,7 @@ class _ProfilePageState extends State<ProfilePage> {
       String? token = await storage.read(key: 'accessToken');
       if (token != null) {
         final userResp = await http.get(
-          Uri.parse('http://10.0.2.2:8008/me'),
+          Uri.parse('${Config.baseUrl}/me'),
           headers: {'Authorization': 'Bearer $token'},
         );
 
@@ -36,7 +39,6 @@ class _ProfilePageState extends State<ProfilePage> {
           setState(() {
             userEmail = userData['email'];
           });
-          print("User Email: $userEmail");
         } else {
           print('Failed to load user: ${userResp.statusCode}');
         }
@@ -45,6 +47,19 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     } catch (e) {
       print("Error fetching user: $e");
+    }
+  }
+
+  void hdlLogOut() async {
+    try {
+      String? token = await storage.read(key: 'accessToken');
+      if (token != null) {
+        await storage.delete(key: 'accessToken');
+        Navigator.push(
+            context, MaterialPageRoute(builder: (ctx) => LoginPage()));
+      }
+    } catch (e) {
+      print(e);
     }
   }
 
@@ -97,6 +112,15 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          Text(
+            "Hello !",
+            style: AppWidget.SubHead1BoldTextFieldStyle(),
+          ),
+          Text(
+            "Account User",
+            style: AppWidget.HeadLine1BoldTextFieldStyle(),
+          ),
+          SizedBox(height: 20),
           Image.asset(
             'assets/images/panda.png',
             height: 140,
@@ -112,14 +136,48 @@ class _ProfilePageState extends State<ProfilePage> {
             padding: EdgeInsets.symmetric(vertical: 20),
             child: Container(
               width: screenWidth * 0.6,
+              height: 48,
               child: FilledButton(
                 style:
                     FilledButton.styleFrom(backgroundColor: Color(0xFF7A5C61)),
-                child: Text(
-                  "My Order",
-                  style: TextStyle(color: Colors.white, fontSize: 16),
+                child: Row(
+                  spacing: 10,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.receipt_outlined, size: 24, color: Colors.white),
+                    Text(
+                      "My Order",
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                      context, MaterialPageRoute(builder: (ctx) => History()));
+                },
+              ),
+            ),
+          ),
+          Container(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Container(
+              width: screenWidth * 0.6,
+              height: 48,
+              child: FilledButton(
+                style:
+                    FilledButton.styleFrom(backgroundColor: Color(0xFFEC0357)),
+                child: Row(
+                  spacing: 10,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.logout_outlined, color: Colors.white),
+                    Text(
+                      "Log out",
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ],
+                ),
+                onPressed: hdlLogOut,
               ),
             ),
           ),

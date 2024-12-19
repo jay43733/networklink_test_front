@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:networklist_test/config.dart';
 import 'package:networklist_test/models/carts.dart';
 import 'package:networklist_test/pages/cartSummary.dart';
+import 'package:networklist_test/pages/history.dart';
 import 'package:networklist_test/pages/login.dart';
 import 'package:networklist_test/pages/productDetail.dart';
 import 'package:networklist_test/pages/profile.dart';
@@ -41,7 +43,7 @@ class _HomeState extends State<Home> {
       String? token = await storage.read(key: 'accessToken');
       if (token != null) {
         final userResp = await http.get(
-          Uri.parse('http://10.0.2.2:8008/me'),
+          Uri.parse('${Config.baseUrl}/me'),
           headers: {'Authorization': 'Bearer $token'},
         );
 
@@ -51,7 +53,6 @@ class _HomeState extends State<Home> {
             userEmail = userData['email'];
             userId = userData['id'];
           });
-          print("User Email: $userEmail, User ID: $userId");
         } else {
           print('Failed to load user: ${userResp.statusCode}');
         }
@@ -68,7 +69,7 @@ class _HomeState extends State<Home> {
       String? token = await storage.read(key: 'accessToken');
       if (token != null) {
         final productResp = await http.get(
-          Uri.parse('http://10.0.2.2:8008/products'),
+          Uri.parse('${Config.baseUrl}/products'),
           headers: {'Authorization': 'Bearer $token'},
         );
 
@@ -95,7 +96,7 @@ class _HomeState extends State<Home> {
     });
 
     final cartResp = await http.get(
-      Uri.parse('http://10.0.2.2:8008/carts'),
+      Uri.parse('${Config.baseUrl}/carts'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
@@ -143,9 +144,6 @@ class _HomeState extends State<Home> {
 
   @override
   Widget build(BuildContext context) {
-    print("CCCCCCCCCC: $carts");
-    print("PPPPPPPPPP: $products");
-    print("uuuuuuuuuu: $userId");
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
@@ -203,7 +201,12 @@ class _HomeState extends State<Home> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Icon(Icons.menu_rounded, color: Color(0xFF7A5C61), size: 34),
+        GestureDetector(
+            onTap: () {
+              Navigator.push(
+                  context, MaterialPageRoute(builder: (ctx) => History()));
+            },
+            child: Icon(Icons.history, color: Color(0xFF7A5C61), size: 34)),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:networklist_test/config.dart';
 import 'package:networklist_test/models/carts.dart';
 import 'package:networklist_test/models/product.dart';
 import 'package:networklist_test/pages/home.dart';
@@ -53,7 +54,7 @@ class _ProductDetailState extends State<ProductDetail> {
     try {
       String? token = await storage.read(key: "accessToken");
       if (token != null) {
-        final url = Uri.parse('http://10.0.2.2:8008/carts');
+        final url = Uri.parse('${Config.baseUrl}/carts');
         final headers = {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token'
@@ -65,11 +66,8 @@ class _ProductDetailState extends State<ProductDetail> {
           "productId": _productId
         });
 
-        print('Sending request to $url with body: $body');
 
         final response = await http.post(url, headers: headers, body: body);
-        print('Response status: ${response.statusCode}');
-        print('Response body: ${response.body}');
         if (response.statusCode == 200) {
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(

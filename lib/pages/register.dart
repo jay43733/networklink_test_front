@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:networklist_test/config.dart';
 import 'package:networklist_test/models/carts.dart';
 import 'package:networklist_test/pages/home.dart';
 import 'package:networklist_test/pages/login.dart';
@@ -30,12 +31,11 @@ class _RegisterState extends State<Register> {
     }
 
     void hdlCreateAccount() async {
-      print("Form is valid $_confirmPassword, $_password, $_email");
       if (_formKey.currentState?.validate() ?? false) {
         _formKey.currentState?.save();
 
         // API URL for register
-        final url = Uri.parse('http://10.0.2.2:8008/register');
+        final url = Uri.parse('${Config.baseUrl}/register');
         final headers = {"Content-Type": 'application/json'};
         final body = jsonEncode({
           'email': _email,
@@ -195,7 +195,6 @@ class _RegisterState extends State<Register> {
               },
               onChanged: (value) {
                 _formKey.currentState?.validate();
-                print("Password: $value");
               },
               onSaved: (value) {
                 _password = value!;
@@ -231,11 +230,9 @@ class _RegisterState extends State<Register> {
                   _confirmPassword = value;
                 });
                 _formKey.currentState?.validate();
-                print("Confirm: $_confirmPassword");
               },
               onSaved: (value) {
                 _confirmPassword = value!;
-                print("Confirmmmmmm: $_confirmPassword");
               },
             ),
           ],
