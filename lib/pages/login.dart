@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'package:flutter/material.dart';
 import 'package:networklist_test/models/carts.dart';
 import 'package:networklist_test/pages/home.dart';
@@ -12,25 +16,58 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  // Secure Storage for token
+  final storage = FlutterSecureStorage();
+
   final _formKey = GlobalKey<FormState>();
   String _email = "";
   String _password = "";
   bool _isPasswordHidden = false;
 
   @override
+
   Widget build(BuildContext context) {
-    void hdlLogin() {
+    void showErrorWithSnackBar(BuildContext context, String message) {
+      final snackBar =
+          SnackBar(content: Text(message), backgroundColor: Colors.red);
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    }
+
+    void hdlLogin() async {
       if (_formKey.currentState?.validate() ?? false) {
         _formKey.currentState?.save();
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (ctx) => Home(
-                    cartItems: cartItems,
-                  )),
-        );
-      } else {
-        print("Form is not valid");
+
+        // API URL for login
+        final url = Uri.parse('http://10.0.2.2:8008/login');
+        final headers = {"Content-Type": 'application/json'};
+        final body = jsonEncode({'email': _email, "password": _password});
+
+        try {
+          final response = await http.post(url, headers: headers, body: body);
+
+          if (response.statusCode == 200) {
+            final responseData = jsonDecode(response.body);
+
+            // Set Token to Secure Storage
+            final token = responseData['accessToken'];
+
+            await storage.write(key: 'accessToken', value: token);
+
+            print("Login : ${token}");
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (ctx) => Home()),
+            );
+          } else {
+            final Map<String, dynamic> result = jsonDecode(response.body);
+            final errorMessage = result["error"] ?? "Unknown error";
+            showErrorWithSnackBar(context, errorMessage);
+            print("Login Failed: $errorMessage");
+          }
+        } catch (e) {
+          showErrorWithSnackBar(context, "Network error: $e");
+          print("Network error: $e");
+        }
       }
     }
 

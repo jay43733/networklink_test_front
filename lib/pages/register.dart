@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:networklist_test/models/carts.dart';
 import 'package:networklist_test/pages/home.dart';
@@ -21,24 +23,42 @@ class _RegisterState extends State<Register> {
 
   @override
   Widget build(BuildContext context) {
-    void hdlCreateAccount() {
-      if (_formKey.currentState?.validate() ?? false) {
-        print("Form is valid");
-        _formKey.currentState?.save();
-        print("email $_email");
-        print("password $_password");
-        print("confirmPassword $_confirmPassword");
+    void showErrorWithSnackBar(BuildContext context, String message) {
+      final snackBar =
+          SnackBar(content: Text(message), backgroundColor: Colors.red);
+      ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    }
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (ctx) => Home(
-              cartItems: cartItems,
-            ),
-          ),
-        );
-      } else {
-        print("Form is not valid");
+    void hdlCreateAccount() async {
+      print("Form is valid $_confirmPassword, $_password, $_email");
+      if (_formKey.currentState?.validate() ?? false) {
+        _formKey.currentState?.save();
+
+        // API URL for register
+        final url = Uri.parse('http://10.0.2.2:8008/register');
+        final headers = {"Content-Type": 'application/json'};
+        final body = jsonEncode({
+          'email': _email,
+          "password": _password,
+          "confirmPassword": _confirmPassword
+        });
+
+        try {
+          final response = await http.post(url, headers: headers, body: body);
+
+          if (response.statusCode == 200) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (ctx) => LoginPage()),
+            );
+          } else {
+            final Map<String, dynamic> result = jsonDecode(response.body);
+            final errorMessage = result["error"] ?? "Unknown error";
+            showErrorWithSnackBar(context, errorMessage);
+          }
+        } catch (e) {
+          showErrorWithSnackBar(context, "Network error: $e");
+        }
       }
     }
 
@@ -173,6 +193,10 @@ class _RegisterState extends State<Register> {
                 }
                 return null;
               },
+              onChanged: (value) {
+                _formKey.currentState?.validate();
+                print("Password: $value");
+              },
               onSaved: (value) {
                 _password = value!;
               },
@@ -199,13 +223,19 @@ class _RegisterState extends State<Register> {
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return "Please Confirm your password";
-                } else if (value != _password) {
-                  return "Passwords do not match";
                 }
                 return null;
               },
+              onChanged: (value) {
+                setState(() {
+                  _confirmPassword = value;
+                });
+                _formKey.currentState?.validate();
+                print("Confirm: $_confirmPassword");
+              },
               onSaved: (value) {
                 _confirmPassword = value!;
+                print("Confirmmmmmm: $_confirmPassword");
               },
             ),
           ],
@@ -214,7 +244,7 @@ class _RegisterState extends State<Register> {
     );
   }
 
-  Widget _buildCreateAccountButton(VoidCallback hdlLogin) {
+  Widget _buildCreateAccountButton(VoidCallback hdlCreateAccount) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       child: SizedBox(
@@ -224,7 +254,7 @@ class _RegisterState extends State<Register> {
             backgroundColor: Color(0xFF7A5C61),
             padding: EdgeInsets.symmetric(vertical: 16),
           ),
-          onPressed: hdlLogin,
+          onPressed: hdlCreateAccount,
           child: Text(
             "Create Account",
             style: TextStyle(fontSize: 16),

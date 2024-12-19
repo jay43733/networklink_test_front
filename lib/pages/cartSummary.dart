@@ -1,17 +1,23 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:networklist_test/models/carts.dart';
 import 'package:networklist_test/pages/successPayment.dart';
 import 'package:networklist_test/widget/widget_support.dart';
+import 'package:http/http.dart' as http;
 
 class CartSummary extends StatefulWidget {
   final List<Carts> carts;
-  const CartSummary({super.key, required this.carts});
+  final int userId;
+  const CartSummary({super.key, required this.carts, required this.userId});
 
   @override
   State<CartSummary> createState() => _CartSummaryState();
 }
 
 class _CartSummaryState extends State<CartSummary> {
+  final storage = FlutterSecureStorage();
   String _getSweetnessText(Sweetness sweetness) {
     switch (sweetness) {
       case Sweetness.hundredPercent:
@@ -25,10 +31,55 @@ class _CartSummaryState extends State<CartSummary> {
     }
   }
 
-  void removeCartItemById(int id) {
-    setState(() {
-      cartItems.removeWhere((item) => item.id == id);
-    });
+  void removeCartItemById(int cartId) async {
+    String? token = await storage.read(key: 'accessToken');
+    print("Cart Id : $cartId");
+    final url = Uri.parse('http://10.0.2.2:8008/carts/$cartId');
+    final headers = {
+      'Authorization': 'Bearer $token',
+      "Content-Type": 'application/json'
+    };
+    try {
+      final response = await http.delete(url, headers: headers);
+      if (response.statusCode == 200) {
+        setState(() {
+          widget.carts.removeWhere((cart) => cart.id == cartId);
+        });
+      } else {
+        print("Failed to remove item: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Network error: $e");
+    }
+  }
+
+  void createOrder() async {
+    String? token = await storage.read(key: 'accessToken');
+    print("Before buying: ${widget.carts}");
+    final totalPrice = widget.carts
+        .fold(0, (prev, item) => prev + (item.amount * item.productData.price));
+    final url = Uri.parse('http://10.0.2.2:8008/orders');
+    final headers = {
+      'Authorization': 'Bearer $token',
+      "Content-Type": 'application/json'
+    };
+    final body = jsonEncode({'totalPrice': totalPrice});
+    try {
+      final response = await http.post(url, headers: headers, body: body);
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              backgroundColor: Color(0xFF18B473),
+              content: Text('Created Order successfully!')),
+        );
+        Navigator.push(
+            context, MaterialPageRoute(builder: (ctx) => SuccessPayment()));
+      } else {
+        print("Failed to place order: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Error occurred: $e");
+    }
   }
 
   @override
@@ -41,12 +92,12 @@ class _CartSummaryState extends State<CartSummary> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _buildHeader(),
+              _buildHeader(context),
               SizedBox(height: 20),
-              _buildListView(), // Use Expanded to fill space
+              _buildListView(),
               SizedBox(height: 20),
               _buildSummaryPrice(),
-              _buildTotalPrice() // Use Expanded to fill space
+              _buildTotalPrice()
             ],
           ),
         ),
@@ -55,13 +106,7 @@ class _CartSummaryState extends State<CartSummary> {
         color: Colors.white,
         child: FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Color(0xFF7A5C61)),
-            onPressed: () {
-              Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (ctx) =>
-                          SuccessPayment(cartItems: widget.carts)));
-            },
+            onPressed: createOrder,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               spacing: 10,
@@ -80,12 +125,12 @@ class _CartSummaryState extends State<CartSummary> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
       child: GestureDetector(
         onTap: () {
-          Navigator.pop(context, cartItems);
+          Navigator.pop(context, widget.carts);
         },
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -98,8 +143,10 @@ class _CartSummaryState extends State<CartSummary> {
                 Image.asset('assets/images/logo.png', height: 30),
               ],
             ),
-            Icon(Icons.account_circle_outlined,
-                color: Color(0xFF7A5C61), size: 34),
+            widget.userId > 0
+                ? Image.asset('assets/images/panda.png', height: 34)
+                : Icon(Icons.account_circle_outlined,
+                    color: Color(0xFF7A5C61), size: 34),
           ],
         ),
       ),
@@ -135,15 +182,15 @@ class _CartSummaryState extends State<CartSummary> {
                   decoration: BoxDecoration(
                       shape: BoxShape.circle, color: Color(0xFF7A5C61)),
                   child: Text(
-                    "${cartItems[index].amount}",
+                    "${widget.carts[index].amount}",
                     style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.white),
                   ),
                 ),
-                Image.asset(
-                  cartItems[index].productImage,
+                Image.network(
+                  widget.carts[index].productData.productImage,
                   width: 60,
                   height: 60,
                 ),
@@ -152,13 +199,13 @@ class _CartSummaryState extends State<CartSummary> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(cartItems[index].productName,
+                      Text(widget.carts[index].productData.productName,
                           style: AppWidget.HeadLine4BoldTextFieldStyle()),
                       SizedBox(height: 4),
                       Text(
-                          "${cartItems[index].price * cartItems[index].amount} baht",
+                          "${widget.carts[index].productData.price * widget.carts[index].amount} baht",
                           style: AppWidget.SubHead2NormalTextFieldStyle()),
-                      Text(_getSweetnessText(cartItems[index].sweetness),
+                      Text(_getSweetnessText(widget.carts[index].sweetness),
                           style: AppWidget.SubHead2NormalTextFieldStyle()),
                     ],
                   ),
@@ -166,7 +213,7 @@ class _CartSummaryState extends State<CartSummary> {
                 IconButton(
                   icon: Icon(Icons.delete, color: Color(0xFFEC0357)),
                   onPressed: () {
-                    removeCartItemById(cartItems[index].id);
+                    removeCartItemById(widget.carts[index].id);
                   },
                 ),
               ],
@@ -178,8 +225,8 @@ class _CartSummaryState extends State<CartSummary> {
   }
 
   Widget _buildSummaryPrice() {
-    final orderedCartItems =
-        cartItems.sort((a, b) => a.productName.compareTo(b.productName));
+    final orderedCartItems = widget.carts.sort((a, b) =>
+        a.productData.productName.compareTo(b.productData.productName));
 
     return Container(
       padding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
@@ -199,7 +246,7 @@ class _CartSummaryState extends State<CartSummary> {
           ListView.builder(
             shrinkWrap: true,
             physics: NeverScrollableScrollPhysics(),
-            itemCount: cartItems.length,
+            itemCount: widget.carts.length,
             itemBuilder: (context, index) {
               return Container(
                 margin: EdgeInsets.symmetric(vertical: 14),
@@ -212,7 +259,7 @@ class _CartSummaryState extends State<CartSummary> {
                         spacing: 4,
                         children: [
                           Text(
-                            "${cartItems[index].productName}",
+                            "${widget.carts[index].productData.productName}",
                             style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.normal,
@@ -220,17 +267,17 @@ class _CartSummaryState extends State<CartSummary> {
                           ),
                           SizedBox(height: 2),
                           Text(
-                            "Amount : ${cartItems[index].amount}",
+                            "Amount : ${widget.carts[index].amount}",
                             style: TextStyle(fontSize: 12),
                           ),
                           Text(
-                            "Sweetness : ${_getSweetnessText(cartItems[index].sweetness)}",
+                            "Sweetness : ${_getSweetnessText(widget.carts[index].sweetness)}",
                             style: TextStyle(fontSize: 12),
                           ),
                         ],
                       ),
                       Text(
-                        "${cartItems[index].price * cartItems[index].amount} baht",
+                        "${widget.carts[index].productData.price * widget.carts[index].amount} baht",
                         style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.normal,
@@ -246,8 +293,8 @@ class _CartSummaryState extends State<CartSummary> {
   }
 
   Widget _buildTotalPrice() {
-    final totalPrice =
-        widget.carts.fold(0, (prev, item) => prev + (item.amount * item.price));
+    final totalPrice = widget.carts
+        .fold(0, (prev, item) => prev + (item.amount * item.productData.price));
     return Padding(
       padding: const EdgeInsets.only(left: 20, right: 20, bottom: 40),
       child: Row(

@@ -1,4 +1,7 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:networklist_test/models/carts.dart';
 import 'package:networklist_test/models/product.dart';
 import 'package:networklist_test/pages/home.dart';
@@ -6,14 +9,16 @@ import 'package:networklist_test/widget/widget_support.dart';
 
 class ProductDetail extends StatefulWidget {
   final Product product;
-
-  const ProductDetail({super.key, required this.product});
+  final int userId;
+  const ProductDetail({super.key, required this.product, required this.userId});
 
   @override
   State<ProductDetail> createState() => _ProductDetailState();
 }
 
 class _ProductDetailState extends State<ProductDetail> {
+  final storage = FlutterSecureStorage();
+
   final _formKey = GlobalKey<FormState>();
   late int _productId;
   late String _productName;
@@ -22,6 +27,7 @@ class _ProductDetailState extends State<ProductDetail> {
   int _amount = 1;
   Sweetness _sweetness = Sweetness.hundredPercent;
 
+  // int userId = 0;
   @override
   void initState() {
     super.initState();
@@ -43,33 +49,46 @@ class _ProductDetailState extends State<ProductDetail> {
     });
   }
 
-  void createCart() {
-    final bool isExisted = cartItems.any(
-        (item) => item.productId == _productId && item.sweetness == _sweetness);
+  void createCart() async {
+    try {
+      String? token = await storage.read(key: "accessToken");
+      if (token != null) {
+        final url = Uri.parse('http://10.0.2.2:8008/carts');
+        final headers = {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token'
+        };
+        final sweetnessString = _sweetness.toString().split(".").last;
+        final body = jsonEncode({
+          'amount': _amount,
+          "sweetness": sweetnessString,
+          "productId": _productId
+        });
 
-    if (isExisted) {
-      setState(() {
-        final existingCartItem = cartItems.firstWhere((item) =>
-            item.productId == _productId && item.sweetness == _sweetness);
-        existingCartItem.amount += _amount;
-      });
-    } else {
-      cartItems.add(Carts(
-          productId: _productId,
-          productName: _productName,
-          productImage: _productImage,
-          price: _price,
-          amount: _amount,
-          sweetness: _sweetness));
+        print('Sending request to $url with body: $body');
+
+        final response = await http.post(url, headers: headers, body: body);
+        print('Response status: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        if (response.statusCode == 200) {
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                backgroundColor: Color(0xFF18B473),
+                content: Text('Cart updated successfully!')),
+          );
+          _formKey.currentState!.reset();
+        } else {
+          print("Error: ${response.body}");
+        }
+      }
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (ctx) => Home()),
+      );
+    } catch (e) {
+      print("Fetching data :$e");
     }
-    _formKey.currentState!.reset();
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-          builder: (ctx) => Home(
-                cartItems: cartItems,
-              )),
-    );
   }
 
   // Computed property to calculate total price
@@ -118,8 +137,10 @@ class _ProductDetailState extends State<ProductDetail> {
               Image.asset('assets/images/logo.png', height: 30),
             ],
           ),
-          Icon(Icons.account_circle_outlined,
-              color: Color(0xFF7A5C61), size: 34),
+          widget.userId > 0
+              ? Image.asset('assets/images/panda.png', height: 34)
+              : Icon(Icons.account_circle_outlined,
+                  color: Color(0xFF7A5C61), size: 34),
         ],
       ),
     );
@@ -145,7 +166,7 @@ class _ProductDetailState extends State<ProductDetail> {
         ),
         child: Column(
           children: [
-            Image.asset(widget.product.imagePath, height: 150),
+            Image.network(widget.product.imagePath, height: 150),
             SizedBox(height: 10),
             Text(
               "${widget.product.price} baht",

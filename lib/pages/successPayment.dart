@@ -4,8 +4,7 @@ import 'package:networklist_test/pages/home.dart';
 import 'package:networklist_test/widget/widget_support.dart';
 
 class SuccessPayment extends StatefulWidget {
-  final List<Carts> cartItems;
-  const SuccessPayment({super.key, required this.cartItems});
+  const SuccessPayment({super.key});
 
   @override
   State<SuccessPayment> createState() => _SuccessPaymentState();
@@ -16,16 +15,12 @@ class _SuccessPaymentState extends State<SuccessPayment> {
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
 
-    print("cart: ${cartItems.length}");
 
     void hdlClearCart() {
-      setState(() {
-        widget.cartItems.clear();
-      });
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (ctx) => Home(cartItems: widget.cartItems),
+          builder: (ctx) => Home(),
         ),
       );
     }
