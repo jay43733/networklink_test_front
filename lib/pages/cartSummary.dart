@@ -34,7 +34,6 @@ class _CartSummaryState extends State<CartSummary> {
 
   void removeCartItemById(int cartId) async {
     String? token = await storage.read(key: 'accessToken');
-    print("Cart Id : $cartId");
     final url = Uri.parse('${Config.baseUrl}/carts/$cartId');
     final headers = {
       'Authorization': 'Bearer $token',
@@ -56,7 +55,6 @@ class _CartSummaryState extends State<CartSummary> {
 
   void createOrder() async {
     String? token = await storage.read(key: 'accessToken');
-    print("Before buying: ${widget.carts}");
     final totalPrice = widget.carts
         .fold(0, (prev, item) => prev + (item.amount * item.productData.price));
     final url = Uri.parse('${Config.baseUrl}/orders');

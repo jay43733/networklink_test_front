@@ -42,7 +42,6 @@ class _HistoryState extends State<History> {
           orders = orderData.map((json) => Orders.fromJson(json)).toList();
           isLoading = false;
         });
-        print("Orders fetch: ${orders.length}");
       } else {
         print("Failed to fetch ${orderResp.statusCode}");
         setState(() {
